@@ -18,8 +18,9 @@ var BreakoutGame = /** @class */ (function () {
             dy: -4,
             radius: 8
         };
-        // 벽돌 초기화
+        // 벽돌과 파티클 초기화
         this.bricks = [];
+        this.particles = [];
         this.initializeBricks();
         this.score = 0;
         this.gameLoop = null;
@@ -28,6 +29,57 @@ var BreakoutGame = /** @class */ (function () {
         this.canvas.addEventListener('mousemove', function (e) { return _this.handleMouseMove(e); });
         (_a = document.getElementById('startButton')) === null || _a === void 0 ? void 0 : _a.addEventListener('click', function () { return _this.startGame(); });
     }
+    BreakoutGame.prototype.getRandomColor = function () {
+        var colors = [
+            '#FF6B6B', // 빨강
+            '#4ECDC4', // 청록
+            '#45B7D1', // 하늘
+            '#96CEB4', // 민트
+            '#FFEEAD', // 노랑
+            '#D4A5A5', // 분홍
+            '#9B59B6', // 보라
+            '#3498DB' // 파랑
+        ];
+        return colors[Math.floor(Math.random() * colors.length)];
+    };
+    BreakoutGame.prototype.createParticles = function (x, y, color) {
+        for (var i = 0; i < 8; i++) {
+            var angle = (Math.PI * 2 / 8) * i;
+            this.particles.push({
+                x: x,
+                y: y,
+                dx: Math.cos(angle) * 3,
+                dy: Math.sin(angle) * 3,
+                radius: 3,
+                color: color,
+                alpha: 1
+            });
+        }
+    };
+    BreakoutGame.prototype.updateParticles = function () {
+        for (var i = this.particles.length - 1; i >= 0; i--) {
+            var particle = this.particles[i];
+            particle.x += particle.dx;
+            particle.y += particle.dy;
+            particle.alpha -= 0.02;
+            if (particle.alpha <= 0) {
+                this.particles.splice(i, 1);
+            }
+        }
+    };
+    BreakoutGame.prototype.drawParticles = function () {
+        var _this = this;
+        this.particles.forEach(function (particle) {
+            _this.ctx.save();
+            _this.ctx.globalAlpha = particle.alpha;
+            _this.ctx.beginPath();
+            _this.ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
+            _this.ctx.fillStyle = particle.color;
+            _this.ctx.fill();
+            _this.ctx.closePath();
+            _this.ctx.restore();
+        });
+    };
     BreakoutGame.prototype.initializeBricks = function () {
         var brickRowCount = 5;
         var brickColumnCount = 8;
@@ -43,7 +95,8 @@ var BreakoutGame = /** @class */ (function () {
                     y: r * (brickHeight + brickPadding) + brickOffsetTop,
                     width: brickWidth,
                     height: brickHeight,
-                    status: true
+                    status: true,
+                    color: this.getRandomColor()
                 });
             }
         }
@@ -75,7 +128,13 @@ var BreakoutGame = /** @class */ (function () {
             if (brick.status) {
                 _this.ctx.beginPath();
                 _this.ctx.rect(brick.x, brick.y, brick.width, brick.height);
-                _this.ctx.fillStyle = '#0095DD';
+                _this.ctx.fillStyle = brick.color;
+                _this.ctx.fill();
+                // 그라데이션 효과 추가
+                var gradient = _this.ctx.createLinearGradient(brick.x, brick.y, brick.x, brick.y + brick.height);
+                gradient.addColorStop(0, 'rgba(255, 255, 255, 0.3)');
+                gradient.addColorStop(1, 'rgba(0, 0, 0, 0.1)');
+                _this.ctx.fillStyle = gradient;
                 _this.ctx.fill();
                 _this.ctx.closePath();
             }
@@ -93,6 +152,8 @@ var BreakoutGame = /** @class */ (function () {
                     brick.status = false;
                     _this.score += 10;
                     _this.updateScore();
+                    // 파티클 효과 생성
+                    _this.createParticles(brick.x + brick.width / 2, brick.y + brick.height / 2, brick.color);
                     if (_this.bricks.every(function (b) { return !b.status; })) {
                         alert('축하합니다! 게임을 클리어하셨습니다!');
                         _this.resetGame();
@@ -114,6 +175,8 @@ var BreakoutGame = /** @class */ (function () {
         this.drawBricks();
         this.drawBall();
         this.drawPaddle();
+        this.updateParticles();
+        this.drawParticles();
         this.collisionDetection();
         // 벽 충돌 감지
         if (this.ball.x + this.ball.dx > this.canvas.width - this.ball.radius ||
@@ -159,6 +222,7 @@ var BreakoutGame = /** @class */ (function () {
         this.ball.dy = -4;
         this.paddle.x = this.canvas.width / 2 - 50;
         this.bricks = [];
+        this.particles = [];
         this.initializeBricks();
     };
     return BreakoutGame;
